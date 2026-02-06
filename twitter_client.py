@@ -249,6 +249,7 @@ class TwitterClient:
 
             # 投稿成功確認
             self.driver.save_screenshot("debug_post.png")
+            self._save_cookies()
             print("[OK] 投稿成功!")
             return {"success": True}
 

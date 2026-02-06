@@ -51,6 +51,18 @@ jobs:
           X_PASSWORD: ${{ secrets.X_PASSWORD }}
         run: python ci_post.py
 
+      - name: Cookieを自動更新
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.COOKIE_UPDATE_TOKEN }}
+        run: |
+          python -c "
+          import base64
+          with open('x_cookies.pkl', 'rb') as f:
+              data = base64.b64encode(f.read()).decode()
+          print(data)
+          " | gh secret set X_COOKIES_BASE64
+
       - name: 投稿履歴をコミット
         run: |
           git config user.name "github-actions[bot]"
