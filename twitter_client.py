@@ -55,9 +55,13 @@ class TwitterClient:
 
         self.driver = webdriver.Chrome(options=options)
 
-        self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
-        })
+        # navigator.webdriverを隠す（CSPでブロックされる場合はスキップ）
+        try:
+            self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+            })
+        except Exception:
+            pass
 
     def _save_cookies(self):
         """Cookieを保存"""
