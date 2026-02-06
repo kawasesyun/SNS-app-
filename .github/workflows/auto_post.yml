@@ -9,7 +9,7 @@ on:
 jobs:
   post:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 100
 
     steps:
       - name: リポジトリをチェックアウト
@@ -46,7 +46,7 @@ jobs:
       - name: 投稿を実行（ヘッドレス）
         env:
           CI: true
-          RANDOM_DELAY_MINUTES: '0'
+          RANDOM_DELAY_MINUTES: '90'
           X_USERNAME: ${{ secrets.X_USERNAME }}
           X_PASSWORD: ${{ secrets.X_PASSWORD }}
         run: python ci_post.py
