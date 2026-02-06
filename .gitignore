@@ -1,0 +1,5 @@
+.env
+x_cookies.pkl
+debug_*.png
+__pycache__/
+*.pyc

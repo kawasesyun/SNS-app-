@@ -1,0 +1,64 @@
+name: X自動投稿
+
+on:
+  schedule:
+    # 3時間ごとに実行（UTC）+ スクリプト内でランダム遅延
+    # 実質的に2〜4時間のランダム間隔になる
+    - cron: '0 0,3,6,9,12,15,18,21 * * *'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Pythonセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Google Chromeをインストール
+        run: |
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: 仮想ディスプレイ(Xvfb)をインストール
+        run: |
+          sudo apt-get install -y xvfb
+
+      - name: Python依存パッケージをインストール
+        run: |
+          pip install selenium python-dotenv
+
+      - name: .envファイルを作成
+        run: |
+          echo "X_USERNAME=${{ secrets.X_USERNAME }}" > .env
+          echo "X_PASSWORD=${{ secrets.X_PASSWORD }}" >> .env
+          echo "POST_MIN_HOURS=2" >> .env
+          echo "POST_MAX_HOURS=5" >> .env
+
+      - name: 投稿を実行（仮想ディスプレイ上）
+        env:
+          CI: true
+          DISPLAY: ':99'
+          RANDOM_DELAY_MINUTES: '60'
+        run: |
+          # 仮想ディスプレイを起動
+          Xvfb :99 -screen 0 1280x900x24 &
+          sleep 2
+          # 投稿スクリプトを実行
+          python ci_post.py
+
+      - name: 投稿履歴をコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add post_history.json || true
+          git diff --staged --quiet || git commit -m "Update post history [skip ci]"
+          git push || true
