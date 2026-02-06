@@ -4,6 +4,9 @@ import os
 import sys
 import random
 import time
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ランダムな遅延を追加（投稿間隔をばらつかせる）
 max_delay_minutes = int(os.getenv("RANDOM_DELAY_MINUTES", 60))

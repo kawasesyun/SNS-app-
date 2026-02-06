@@ -47,7 +47,7 @@ jobs:
         env:
           CI: true
           DISPLAY: ':99'
-          RANDOM_DELAY_MINUTES: '60'
+          RANDOM_DELAY_MINUTES: ${{ github.event_name == 'workflow_dispatch' && '0' || '60' }}
         run: |
           # 仮想ディスプレイを起動
           Xvfb :99 -screen 0 1280x900x24 &
