@@ -47,9 +47,13 @@ class TwitterClient:
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
 
-        # CI環境用: ユーザーエージェント設定
+        # CI環境用: 追加設定
         if os.getenv("CI"):
             options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--disable-software-rasterizer")
+            options.add_argument("--lang=ja-JP")
+            options.add_argument("--single-process")
 
         self.driver = webdriver.Chrome(options=options)
 
@@ -153,9 +157,12 @@ class TwitterClient:
         except Exception as e:
             print(f"[ERROR] 自動ログインエラー: {e}")
             try:
-                self.driver.save_screenshot("debug_login.png")
-            except:
-                pass
+                if self.driver:
+                    print(f"[DEBUG] 現在のURL: {self.driver.current_url}")
+                    print(f"[DEBUG] ページタイトル: {self.driver.title}")
+                    self.driver.save_screenshot("debug_login.png")
+            except Exception as e2:
+                print(f"[DEBUG] スクリーンショット取得失敗: {e2}")
             return False
         finally:
             if self.driver:
