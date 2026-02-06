@@ -54,7 +54,7 @@ jobs:
         env:
           CI: true
           DISPLAY: ':99'
-          RANDOM_DELAY_MINUTES: ${{ github.event_name == 'workflow_dispatch' && '0' || '60' }}
+          RANDOM_DELAY_MINUTES: '0'
           X_USERNAME: ${{ secrets.X_USERNAME }}
           X_PASSWORD: ${{ secrets.X_PASSWORD }}
         run: |
