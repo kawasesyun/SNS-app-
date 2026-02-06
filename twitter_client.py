@@ -84,6 +84,16 @@ class TwitterClient:
 
     def login_auto(self) -> bool:
         """ユーザー名とパスワードで自動ログイン（CI環境用）"""
+        # 環境変数を再取得（CI環境対応）
+        self.username = os.getenv("X_USERNAME")
+        self.password = os.getenv("X_PASSWORD")
+
+        if not self.username or not self.password:
+            print(f"[ERROR] X_USERNAME または X_PASSWORD が未設定です")
+            print(f"  X_USERNAME: {'設定済み' if self.username else '未設定'}")
+            print(f"  X_PASSWORD: {'設定済み' if self.password else '未設定'}")
+            return False
+
         try:
             self._create_driver(headless=False)
             self.driver.get("https://x.com/i/flow/login")

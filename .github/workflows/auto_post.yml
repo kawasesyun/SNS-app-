@@ -43,11 +43,20 @@ jobs:
           echo "POST_MIN_HOURS=2" >> .env
           echo "POST_MAX_HOURS=5" >> .env
 
+      - name: .env内容を確認（デバッグ）
+        run: |
+          echo "=== .env file exists: ==="
+          test -f .env && echo "YES" || echo "NO"
+          echo "=== X_USERNAME length: ==="
+          cat .env | grep X_USERNAME | wc -c
+
       - name: 投稿を実行（仮想ディスプレイ上）
         env:
           CI: true
           DISPLAY: ':99'
           RANDOM_DELAY_MINUTES: ${{ github.event_name == 'workflow_dispatch' && '0' || '60' }}
+          X_USERNAME: ${{ secrets.X_USERNAME }}
+          X_PASSWORD: ${{ secrets.X_PASSWORD }}
         run: |
           # 仮想ディスプレイを起動
           Xvfb :99 -screen 0 1280x900x24 &
