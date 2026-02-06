@@ -218,7 +218,7 @@ class TwitterClient:
                 if not self.login_auto():
                     return {"success": False, "error": "auto login failed"}
                 # 再度ドライバー作成してCookieログイン
-                self._create_driver(headless=False)
+                self._create_driver(headless=is_ci)
                 if not self._login_with_cookies():
                     return {"success": False, "error": "cookie login failed after auto login"}
 

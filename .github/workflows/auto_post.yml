@@ -51,17 +51,39 @@ jobs:
           X_PASSWORD: ${{ secrets.X_PASSWORD }}
         run: python ci_post.py
 
+      - name: Cookie期限切れ時に再ログイン
+        if: failure()
+        env:
+          CI: true
+          X_USERNAME: ${{ secrets.X_USERNAME }}
+          X_PASSWORD: ${{ secrets.X_PASSWORD }}
+        run: |
+          python -c "
+          from twitter_client import TwitterClient
+          client = TwitterClient()
+          if client.login_auto():
+              print('[OK] 再ログインしてCookieを更新しました')
+          else:
+              print('[ERROR] 再ログインに失敗しました')
+              exit(1)
+          "
+
       - name: Cookieを自動更新
-        if: success()
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.COOKIE_UPDATE_TOKEN }}
         run: |
-          python -c "
+          if [ -f x_cookies.pkl ]; then
+            python -c "
           import base64
           with open('x_cookies.pkl', 'rb') as f:
               data = base64.b64encode(f.read()).decode()
           print(data)
           " | gh secret set X_COOKIES_BASE64
+            echo '[OK] Cookieを自動更新しました'
+          else
+            echo '[WARN] x_cookies.pkl が見つかりません'
+          fi
 
       - name: 投稿履歴をコミット
         run: |
