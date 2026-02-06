@@ -51,9 +51,7 @@ class TwitterClient:
         if os.getenv("CI"):
             options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
             options.add_argument("--disable-extensions")
-            options.add_argument("--disable-software-rasterizer")
             options.add_argument("--lang=ja-JP")
-            options.add_argument("--single-process")
 
         self.driver = webdriver.Chrome(options=options)
 
