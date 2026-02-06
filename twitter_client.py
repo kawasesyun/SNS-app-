@@ -89,7 +89,7 @@ class TwitterClient:
             return False
 
     def login_auto(self) -> bool:
-        """ユーザー名とパスワードで自動ログイン（CI環境用）"""
+        """ユーザー名とパスワードで自動ログイン（CI環境用 - ヘッドレス）"""
         # 環境変数を再取得（CI環境対応）
         self.username = os.getenv("X_USERNAME")
         self.password = os.getenv("X_PASSWORD")
@@ -101,59 +101,60 @@ class TwitterClient:
             return False
 
         try:
-            self._create_driver(headless=False)
+            self._create_driver(headless=True)
+            print("[INFO] ヘッドレスモードでログイン開始...")
             self.driver.get("https://x.com/i/flow/login")
-            human_delay(3, 5)
+            time.sleep(5)
+            print(f"[DEBUG] ページタイトル: {self.driver.title}")
 
             # ユーザー名入力
-            username_input = WebDriverWait(self.driver, 15).until(
+            username_input = WebDriverWait(self.driver, 20).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'input[autocomplete="username"]'))
             )
-            human_delay(0.5, 1.0)
-            actions = ActionChains(self.driver)
-            actions.move_to_element(username_input).pause(0.3).click().perform()
-            human_delay(0.3, 0.6)
-            human_type(username_input, self.username)
-            human_delay(0.5, 1.0)
+            print("[INFO] ユーザー名入力欄を発見")
+            username_input.click()
+            time.sleep(0.5)
+            username_input.send_keys(self.username)
+            time.sleep(1)
 
             # 「次へ」ボタンをクリック
             next_buttons = self.driver.find_elements(By.XPATH, '//button[@role="button"]')
             for btn in next_buttons:
                 text = btn.text.strip()
                 if text in ["Next", "次へ", "next"]:
-                    actions = ActionChains(self.driver)
-                    actions.move_to_element(btn).pause(0.3).click().perform()
+                    btn.click()
+                    print(f"[INFO] 「{text}」ボタンをクリック")
                     break
-            human_delay(2, 3)
+            time.sleep(3)
 
             # パスワード入力
-            password_input = WebDriverWait(self.driver, 15).until(
+            password_input = WebDriverWait(self.driver, 20).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'input[type="password"]'))
             )
-            actions = ActionChains(self.driver)
-            actions.move_to_element(password_input).pause(0.3).click().perform()
-            human_delay(0.3, 0.6)
-            human_type(password_input, self.password)
-            human_delay(0.5, 1.0)
+            print("[INFO] パスワード入力欄を発見")
+            password_input.click()
+            time.sleep(0.5)
+            password_input.send_keys(self.password)
+            time.sleep(1)
 
             # 「ログイン」ボタンをクリック
             login_buttons = self.driver.find_elements(By.XPATH, '//button[@role="button"]')
             for btn in login_buttons:
                 text = btn.text.strip()
                 if text in ["Log in", "ログイン", "log in"]:
-                    actions = ActionChains(self.driver)
-                    actions.move_to_element(btn).pause(0.3).click().perform()
+                    btn.click()
+                    print(f"[INFO] 「{text}」ボタンをクリック")
                     break
-            human_delay(4, 6)
+            time.sleep(6)
 
             # ログイン成功確認
+            print(f"[DEBUG] ログイン後URL: {self.driver.current_url}")
             if "/home" in self.driver.current_url:
                 self._save_cookies()
                 print("[OK] 自動ログイン成功")
                 return True
             else:
                 print(f"[ERROR] ログイン失敗 URL: {self.driver.current_url}")
-                self.driver.save_screenshot("debug_login.png")
                 return False
 
         except Exception as e:
@@ -162,9 +163,8 @@ class TwitterClient:
                 if self.driver:
                     print(f"[DEBUG] 現在のURL: {self.driver.current_url}")
                     print(f"[DEBUG] ページタイトル: {self.driver.title}")
-                    self.driver.save_screenshot("debug_login.png")
             except Exception as e2:
-                print(f"[DEBUG] スクリーンショット取得失敗: {e2}")
+                print(f"[DEBUG] デバッグ情報取得失敗: {e2}")
             return False
         finally:
             if self.driver:
@@ -205,8 +205,9 @@ class TwitterClient:
     def post_tweet(self, text: str) -> dict:
         """ツイートを投稿する（ブラウザ表示して人間操作を模倣）"""
         try:
-            # ブラウザ表示モードで実行（検知回避）
-            self._create_driver(headless=False)
+            # CI環境はヘッドレス、ローカルはブラウザ表示
+            is_ci = bool(os.getenv("CI"))
+            self._create_driver(headless=is_ci)
 
             if not self._login_with_cookies():
                 print("[INFO] Cookie無効。自動ログインを試みます...")

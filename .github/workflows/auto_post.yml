@@ -2,8 +2,7 @@ name: X自動投稿
 
 on:
   schedule:
-    # 3時間ごとに実行（UTC）+ スクリプト内でランダム遅延
-    # 実質的に2〜4時間のランダム間隔になる
+    # 3時間ごとに実行（UTC）
     - cron: '0 0,3,6,9,12,15,18,21 * * *'
   workflow_dispatch:  # 手動実行も可能
 
@@ -28,41 +27,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      - name: 仮想ディスプレイ(Xvfb)をインストール
-        run: |
-          sudo apt-get install -y xvfb
-
       - name: Python依存パッケージをインストール
         run: |
           pip install selenium python-dotenv
 
-      - name: .envファイルを作成
-        run: |
-          echo "X_USERNAME=${{ secrets.X_USERNAME }}" > .env
-          echo "X_PASSWORD=${{ secrets.X_PASSWORD }}" >> .env
-          echo "POST_MIN_HOURS=2" >> .env
-          echo "POST_MAX_HOURS=5" >> .env
-
-      - name: .env内容を確認（デバッグ）
-        run: |
-          echo "=== .env file exists: ==="
-          test -f .env && echo "YES" || echo "NO"
-          echo "=== X_USERNAME length: ==="
-          cat .env | grep X_USERNAME | wc -c
-
-      - name: 投稿を実行（仮想ディスプレイ上）
+      - name: 投稿を実行（ヘッドレス）
         env:
           CI: true
-          DISPLAY: ':99'
           RANDOM_DELAY_MINUTES: '0'
           X_USERNAME: ${{ secrets.X_USERNAME }}
           X_PASSWORD: ${{ secrets.X_PASSWORD }}
-        run: |
-          # 仮想ディスプレイを起動
-          Xvfb :99 -screen 0 1280x900x24 &
-          sleep 2
-          # 投稿スクリプトを実行
-          python ci_post.py
+        run: python ci_post.py
 
       - name: 投稿履歴をコミット
         run: |
