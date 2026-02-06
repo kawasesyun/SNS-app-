@@ -234,6 +234,11 @@ class TwitterClient:
             actions.move_to_element(tweet_box).pause(random.uniform(0.3, 0.8)).click().perform()
             human_delay(0.5, 1.0)
 
+            # クリック後に要素を再取得（stale element対策）
+            tweet_box = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="tweetTextarea_0"]'))
+            )
+
             # 人間のように1文字ずつ入力
             human_type(tweet_box, text)
             human_delay(1.0, 2.0)
