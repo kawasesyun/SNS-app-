@@ -246,17 +246,39 @@ class TwitterClient:
             human_type(tweet_box, text)
             human_delay(1.0, 2.0)
 
-            # 投稿ボタンをクリック
-            post_button = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, '[data-testid="tweetButtonInline"]'))
-            )
-            actions = ActionChains(self.driver)
-            actions.move_to_element(post_button).pause(random.uniform(0.3, 0.6)).click().perform()
+            # スクリーンショット（投稿前）
+            self.driver.save_screenshot("debug_before_post.png")
 
-            time.sleep(5)
+            # 投稿方法1: Ctrl+Enterで送信（最も確実）
+            posted = False
+            try:
+                tweet_box_active = self.driver.find_element(By.CSS_SELECTOR, '[data-testid="tweetTextarea_0"]')
+                tweet_box_active.send_keys(Keys.CONTROL, Keys.ENTER)
+                print("[INFO] Ctrl+Enterで投稿を送信")
+                time.sleep(5)
+                posted = True
+            except Exception as e1:
+                print(f"[WARN] Ctrl+Enter失敗: {e1}")
 
-            # 投稿成功確認
+            # 投稿方法2: ボタンクリック（複数セレクタを試す）
+            if not posted:
+                button_selectors = [
+                    '[data-testid="tweetButtonInline"]',
+                    '[data-testid="tweetButton"]',
+                ]
+                for selector in button_selectors:
+                    try:
+                        btn = self.driver.find_element(By.CSS_SELECTOR, selector)
+                        self.driver.execute_script("arguments[0].click();", btn)
+                        print(f"[INFO] ボタンクリック成功: {selector}")
+                        time.sleep(5)
+                        posted = True
+                        break
+                    except Exception:
+                        continue
+
             self.driver.save_screenshot("debug_post.png")
+
             self._save_cookies()
             print("[OK] 投稿成功!")
             return {"success": True}
