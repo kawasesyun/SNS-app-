@@ -24,7 +24,10 @@ def human_delay(min_sec=0.5, max_sec=1.5):
 def human_type(element, text):
     """人間のようにゆっくり1文字ずつ入力"""
     for char in text:
-        element.send_keys(char)
+        if char == '\n':
+            element.send_keys(Keys.SHIFT, Keys.ENTER)
+        else:
+            element.send_keys(char)
         time.sleep(random.uniform(0.03, 0.12))
 
 
