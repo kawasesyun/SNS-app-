@@ -5,7 +5,7 @@ import json
 import random
 import urllib.request
 
-HISTORY_FILE = os.path.join(os.path.dirname(__file__), "post_history.json")
+DEFAULT_HISTORY_FILE = os.path.join(os.path.dirname(__file__), "post_history.json")
 MEIGEN_API_URL = "https://meigen.doodlenote.net/api/json.php?c=10"
 AUTO_REFILL_THRESHOLD = 5  # 残りがこの数以下になったら自動補充
 
@@ -13,6 +13,7 @@ AUTO_REFILL_THRESHOLD = 5  # 残りがこの数以下になったら自動補充
 class ContentGenerator:
     def __init__(self):
         self.file_path = os.getenv("POSTS_FILE", "posts.txt")
+        self.history_file = os.getenv("HISTORY_FILE", DEFAULT_HISTORY_FILE)
         self.posts = self._load_posts()
         self.history = self._load_history()
 
@@ -66,17 +67,17 @@ class ContentGenerator:
 
     def _load_history(self) -> list:
         """投稿履歴を読み込む"""
-        if not os.path.exists(HISTORY_FILE):
+        if not os.path.exists(self.history_file):
             return []
         try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            with open(self.history_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except:
             return []
 
     def _save_history(self):
         """投稿履歴を保存"""
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        with open(self.history_file, "w", encoding="utf-8") as f:
             json.dump(self.history, f, ensure_ascii=False, indent=2)
 
     def generate_post(self) -> str:
