@@ -9,6 +9,13 @@ DEFAULT_HISTORY_FILE = os.path.join(os.path.dirname(__file__), "post_history.jso
 MEIGEN_API_URL = "https://meigen.doodlenote.net/api/json.php?c=10"
 AUTO_REFILL_THRESHOLD = 5  # 残りがこの数以下になったら自動補充
 
+# ハッシュタグセット（ランダムに4〜5個選ぶ）
+HASHTAGS = [
+    "#名言", "#格言", "#人生", "#モチベーション", "#やる気",
+    "#自己啓発", "#成長", "#挑戦", "#努力", "#前向き",
+    "#言葉の力", "#心に響く言葉", "#今日の名言", "#偉人の言葉",
+]
+
 
 class ContentGenerator:
     def __init__(self):
@@ -107,7 +114,27 @@ class ContentGenerator:
 
         remaining = len(self.posts) - len(self.history)
         print(f"残り未投稿: {remaining} 件")
-        return post
+
+        # フォーマット整形 + ハッシュタグ追加
+        formatted = self._format_post(post)
+        return formatted
+
+    def _format_post(self, post: str) -> str:
+        """投稿を見やすいフォーマットに整形し、ハッシュタグを追加"""
+        # 「名言」 - 人物 の形式を分割
+        if " - " in post:
+            quote_part, author_part = post.rsplit(" - ", 1)
+            formatted = f"{quote_part}\n\n― {author_part}"
+        else:
+            formatted = post
+
+        # ランダムにハッシュタグを4〜5個選択
+        tags = random.sample(HASHTAGS, random.randint(4, 5))
+        tag_line = " ".join(tags)
+
+        # 280文字制限を考慮（日本語は1文字=2カウント）
+        result = f"{formatted}\n\n{tag_line}"
+        return result
 
     def get_remaining_count(self) -> int:
         """未投稿の数を返す"""
