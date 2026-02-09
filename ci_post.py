@@ -18,6 +18,7 @@ if max_delay_minutes > 0:
 
 from twitter_client import TwitterClient
 from content_generator import ContentGenerator
+from image_generator import generate_quote_image
 
 
 def main():
@@ -37,8 +38,22 @@ def main():
 
     print(f"投稿内容: {content}")
 
+    # 名言画像を生成
+    image_path = None
+    try:
+        raw_post = generator.history[-1] if generator.history else ""
+        if " - " in raw_post:
+            quote_part, author_part = raw_post.rsplit(" - ", 1)
+            quote_text = quote_part.replace("「", "").replace("」", "")
+            image_path = generate_quote_image(quote_text, author_part)
+            print(f"[OK] 名言画像を生成: {image_path}")
+        else:
+            print("[INFO] 画像生成スキップ（著者情報なし）")
+    except Exception as e:
+        print(f"[WARN] 画像生成失敗: {e}")
+
     client = TwitterClient()
-    result = client.post_tweet(content)
+    result = client.post_tweet(content, image_path=image_path)
 
     if result["success"]:
         print("[OK] 投稿完了!")

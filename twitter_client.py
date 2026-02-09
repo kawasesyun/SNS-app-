@@ -205,7 +205,7 @@ class TwitterClient:
         print("[OK] Cookieでログインしました")
         return True
 
-    def post_tweet(self, text: str) -> dict:
+    def post_tweet(self, text: str, image_path: str = None) -> dict:
         """ツイートを投稿する（ブラウザ表示して人間操作を模倣）"""
         try:
             # CI環境はヘッドレス、ローカルはブラウザ表示
@@ -241,6 +241,16 @@ class TwitterClient:
             tweet_box = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="tweetTextarea_0"]'))
             )
+
+            # 画像を添付
+            if image_path and os.path.exists(image_path):
+                try:
+                    file_input = self.driver.find_element(By.CSS_SELECTOR, 'input[data-testid="fileInput"]')
+                    file_input.send_keys(os.path.abspath(image_path))
+                    print(f"[INFO] 画像を添付: {image_path}")
+                    time.sleep(3)
+                except Exception as e:
+                    print(f"[WARN] 画像添付失敗: {e}")
 
             # 人間のように1文字ずつ入力
             human_type(tweet_box, text)

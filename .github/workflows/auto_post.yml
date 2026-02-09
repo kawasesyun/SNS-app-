@@ -2,8 +2,9 @@ name: X自動投稿
 
 on:
   schedule:
-    # 2時間ごとに実行（UTC）
-    - cron: '0 0,2,4,6,8,10,12,14,16,18,20,22 * * *'
+    # エンゲージメントが高い時間帯（JST）に投稿
+    # JST 7:00, 12:00, 17:00, 20:00, 22:00 → UTC 22:00, 3:00, 8:00, 11:00, 13:00
+    - cron: '0 22,3,8,11,13 * * *'
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
@@ -27,9 +28,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
+      - name: 日本語フォントをインストール
+        run: |
+          sudo apt-get install -y fonts-noto-cjk
+
       - name: Python依存パッケージをインストール
         run: |
-          pip install selenium python-dotenv
+          pip install selenium python-dotenv Pillow
 
       - name: Cookieを復元
         env:
