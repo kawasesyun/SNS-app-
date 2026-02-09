@@ -9,11 +9,49 @@ DEFAULT_HISTORY_FILE = os.path.join(os.path.dirname(__file__), "post_history.jso
 MEIGEN_API_URL = "https://meigen.doodlenote.net/api/json.php?c=10"
 AUTO_REFILL_THRESHOLD = 5  # 残りがこの数以下になったら自動補充
 
-# ハッシュタグセット（ランダムに4〜5個選ぶ）
+# 共感フック（冒頭に付ける一言）
+HOOKS = [
+    "何度でも言いたい。",
+    "これ、マジで大事。",
+    "心に刺さった言葉。",
+    "迷った時に読み返したい。",
+    "全人類に届けたい言葉。",
+    "これを知ってから人生変わった。",
+    "何回読んでも鳥肌が立つ。",
+    "20代のうちに知りたかった。",
+    "落ち込んだ時はこれを読む。",
+    "保存して何度も読み返してほしい。",
+    "この言葉に何度救われたか。",
+    "成功する人は皆これを知っている。",
+    "これが真理だと思う。",
+    "忘れちゃいけない言葉。",
+    "壁にぶつかった時に思い出す言葉。",
+]
+
+# 一言コメント（名言の後に付ける感想）
+COMMENTS = [
+    "行動した人だけが見える景色がある。",
+    "結局、やるかやらないか。それだけ。",
+    "完璧じゃなくていい。まず一歩。",
+    "過去は変えられない。でも未来は選べる。",
+    "今日が人生で一番若い日。",
+    "失敗を恐れるより、何もしないことを恐れよう。",
+    "努力は裏切らない。ただし正しい方向に。",
+    "自分を信じた人だけが道を切り拓ける。",
+    "小さな積み重ねが、やがて大きな差になる。",
+    "諦めた瞬間が、本当の失敗。",
+    "昨日の自分を超えればいい。それだけでいい。",
+    "環境のせいにした瞬間、成長は止まる。",
+    "辛い時こそ、自分の底力が試される。",
+    "夢は逃げない。逃げるのはいつも自分。",
+    "後悔するのは、やらなかったこと。",
+]
+
+# ハッシュタグセット（ランダムに3〜4個選ぶ）
 HASHTAGS = [
-    "#名言", "#格言", "#人生", "#モチベーション", "#やる気",
-    "#自己啓発", "#成長", "#挑戦", "#努力", "#前向き",
-    "#言葉の力", "#心に響く言葉", "#今日の名言", "#偉人の言葉",
+    "#名言", "#格言", "#人生", "#モチベーション",
+    "#自己啓発", "#成長", "#挑戦", "#努力",
+    "#言葉の力", "#心に響く言葉", "#今日の名言",
 ]
 
 
@@ -120,20 +158,26 @@ class ContentGenerator:
         return formatted
 
     def _format_post(self, post: str) -> str:
-        """投稿を見やすいフォーマットに整形し、ハッシュタグを追加"""
+        """バズる投稿フォーマットに整形"""
+        # 共感フック（冒頭の一言）
+        hook = random.choice(HOOKS)
+
         # 「名言」 - 人物 の形式を分割
         if " - " in post:
             quote_part, author_part = post.rsplit(" - ", 1)
-            formatted = f"{quote_part}\n\n― {author_part}"
+            quote_block = f"{quote_part}\n\n― {author_part}"
         else:
-            formatted = post
+            quote_block = post
 
-        # ランダムにハッシュタグを4〜5個選択
-        tags = random.sample(HASHTAGS, random.randint(4, 5))
+        # 一言コメント（感想・教訓）
+        comment = random.choice(COMMENTS)
+
+        # ハッシュタグ（3〜4個）
+        tags = random.sample(HASHTAGS, random.randint(3, 4))
         tag_line = " ".join(tags)
 
-        # 280文字制限を考慮（日本語は1文字=2カウント）
-        result = f"{formatted}\n\n{tag_line}"
+        # フォーマット: フック → 名言 → コメント → ハッシュタグ
+        result = f"{hook}\n\n{quote_block}\n\n{comment}\n\n{tag_line}"
         return result
 
     def get_remaining_count(self) -> int:
