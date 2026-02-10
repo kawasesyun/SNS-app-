@@ -2,8 +2,8 @@ name: Cookie定期リフレッシュ
 
 on:
   schedule:
-    # 12時間ごとにCookieをリフレッシュ（期限切れ防止）
-    - cron: '0 6,18 * * *'
+    # 1日1回Cookieをリフレッシュ（期限切れ防止）
+    - cron: '0 10 * * *'
   workflow_dispatch:
 
 jobs:
