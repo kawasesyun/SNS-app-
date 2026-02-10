@@ -44,17 +44,16 @@ jobs:
 
       - name: Cookieの有効性を確認してリフレッシュ
         env:
-          CI: true
+          CI: 'true'
+          X_USERNAME: ${{ secrets.X_USERNAME }}
+          X_PASSWORD: ${{ secrets.X_PASSWORD }}
         run: |
           python -c "
-          import os, pickle, base64
-          os.environ['CI'] = 'true'
+          import os, time
           from twitter_client import TwitterClient
           client = TwitterClient()
           client._create_driver(headless=True)
           if client._login_with_cookies():
-              # Cookieが有効 → ページアクセスでリフレッシュ
-              import time
               time.sleep(3)
               client._save_cookies()
               print('[OK] Cookieリフレッシュ成功')
@@ -63,9 +62,6 @@ jobs:
               if client.driver:
                   client.driver.quit()
                   client.driver = None
-              # パスワードで再ログイン
-              os.environ['X_USERNAME'] = os.environ.get('X_USERNAME', '')
-              os.environ['X_PASSWORD'] = os.environ.get('X_PASSWORD', '')
               if client.login_auto():
                   print('[OK] 再ログイン成功')
               else:
@@ -74,9 +70,6 @@ jobs:
           if client.driver:
               client.driver.quit()
           "
-        env:
-          X_USERNAME: ${{ secrets.X_USERNAME }}
-          X_PASSWORD: ${{ secrets.X_PASSWORD }}
 
       - name: Cookieを自動更新
         env:
