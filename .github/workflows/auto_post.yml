@@ -97,3 +97,16 @@ jobs:
           git add post_history.json || true
           git diff --staged --quiet || git commit -m "Update post history [skip ci]"
           git push || true
+
+      - name: 失敗時にIssueで通知
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.COOKIE_UPDATE_TOKEN }}
+        run: |
+          existing=$(gh issue list --label "bot-alert" --state open --limit 1 --json number -q '.[0].number')
+          if [ -z "$existing" ]; then
+            gh issue create \
+              --title "⚠️ 自動投稿に失敗しました" \
+              --body "投稿と再ログインの両方が失敗しました。Cookieの手動更新が必要です。" \
+              --label "bot-alert"
+          fi
