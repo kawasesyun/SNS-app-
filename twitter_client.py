@@ -252,9 +252,17 @@ class TwitterClient:
                 except Exception as e:
                     print(f"[WARN] 画像添付失敗: {e}")
 
-            # 人間のように1文字ずつ入力
-            human_type(tweet_box, text)
-            human_delay(1.0, 2.0)
+            # JavaScriptでテキストを入力（BMP外の絵文字対応）
+            self.driver.execute_script("""
+                var el = arguments[0];
+                el.focus();
+                var text = arguments[1];
+                var dt = new DataTransfer();
+                dt.setData('text/plain', text);
+                var event = new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true});
+                el.dispatchEvent(event);
+            """, tweet_box, text)
+            human_delay(2.0, 3.0)
 
             # スクリーンショット（投稿前）
             self.driver.save_screenshot("debug_before_post.png")
