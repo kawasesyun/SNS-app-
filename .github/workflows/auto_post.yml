@@ -33,7 +33,7 @@ jobs:
 
       - name: Python依存パッケージをインストール
         run: |
-          pip install selenium python-dotenv Pillow
+          pip install selenium python-dotenv Pillow google-generativeai
 
       - name: Cookieを復元
         env:
@@ -53,6 +53,7 @@ jobs:
           RANDOM_DELAY_MINUTES: '60'
           X_USERNAME: ${{ secrets.X_USERNAME }}
           X_PASSWORD: ${{ secrets.X_PASSWORD }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python ci_post.py
 
       - name: Cookie期限切れ時に再ログイン

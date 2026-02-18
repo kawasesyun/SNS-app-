@@ -20,7 +20,14 @@ if max_delay_minutes > 0:
 from twitter_client import TwitterClient
 from content_generator import ContentGenerator
 from image_generator import generate_quote_image
-from trend_scraper import get_buzz_post_for_reference
+from trend_scraper import get_buzz_post_for_reference, scrape_trending_posts, TREND_QUERIES
+
+try:
+    from ai_generator import generate_viral_post, generate_trend_post
+    AI_AVAILABLE = True
+except ImportError:
+    AI_AVAILABLE = False
+    print("[WARN] ai_generator が利用できません。従来モードで動作します。")
 
 # 投稿タイプのローテーション記録ファイル
 ROTATION_FILE = os.path.join(os.path.dirname(__file__), "post_rotation.json")
@@ -51,36 +58,71 @@ def _should_use_trend() -> bool:
     return last_type == "quote"
 
 
+def _try_ai_post(use_trend: bool):
+    """AI生成で投稿を作成（成功時はcontent, image_pathを返す）"""
+    if not AI_AVAILABLE:
+        return None, None
+
+    try:
+        if use_trend:
+            # トレンド情報を取得してAIに渡す
+            print("[INFO] AI + トレンド参考モードで生成中...")
+            query = random.choice(TREND_QUERIES)
+            trend_data = scrape_trending_posts(search_query=query, max_posts=5)
+            ai_result = generate_trend_post(trend_data)
+        else:
+            print("[INFO] AIモードで投稿を生成中...")
+            ai_result = generate_viral_post()
+
+        content = ai_result["post_text"]
+        image_path = None
+
+        # 画像生成
+        if ai_result.get("image_quote"):
+            try:
+                image_path = generate_quote_image(
+                    ai_result["image_quote"],
+                    ai_result.get("image_author", ""),
+                )
+                print(f"[OK] AI画像を生成: {image_path}")
+            except Exception as e:
+                print(f"[WARN] AI画像生成失敗: {e}")
+
+        return content, image_path
+
+    except Exception as e:
+        print(f"[WARN] AI生成失敗: {e}。従来モードにフォールバック。")
+        return None, None
+
+
 def main():
     use_trend = _should_use_trend()
-    print(f"[INFO] 今回の投稿タイプ: {'トレンド参考' if use_trend else '名言'}")
+    print(f"[INFO] 今回の投稿タイプ: {'トレンド参考' if use_trend else '通常'}")
 
-    content = None
-    image_path = None
+    # === AI生成を最優先 ===
+    content, image_path = _try_ai_post(use_trend)
 
-    if use_trend:
-        # === トレンド投稿モード ===
-        print("[INFO] バズ投稿を参考にした投稿を生成中...")
-        try:
-            trend_result = get_buzz_post_for_reference()
-            if trend_result:
-                content = trend_result["post_text"]
-                # 画像生成
-                try:
-                    image_path = generate_quote_image(
-                        trend_result["image_quote"],
-                        trend_result.get("image_author", ""),
-                    )
-                    print(f"[OK] トレンド画像を生成: {image_path}")
-                except Exception as e:
-                    print(f"[WARN] トレンド画像生成失敗: {e}")
-            else:
-                print("[WARN] トレンド投稿の取得に失敗。名言投稿にフォールバック。")
-        except Exception as e:
-            print(f"[WARN] トレンド処理エラー: {e}。名言投稿にフォールバック。")
+    # === AI失敗時: 従来モードにフォールバック ===
+    if not content:
+        print("[INFO] 従来モードで投稿を生成します...")
+
+        if use_trend:
+            try:
+                trend_result = get_buzz_post_for_reference()
+                if trend_result:
+                    content = trend_result["post_text"]
+                    try:
+                        image_path = generate_quote_image(
+                            trend_result["image_quote"],
+                            trend_result.get("image_author", ""),
+                        )
+                    except Exception as e:
+                        print(f"[WARN] トレンド画像生成失敗: {e}")
+            except Exception as e:
+                print(f"[WARN] トレンド処理エラー: {e}")
 
     if not content:
-        # === 名言投稿モード（通常 or フォールバック） ===
+        # 名言投稿（最終フォールバック）
         generator = ContentGenerator()
 
         remaining = generator.get_remaining_count()
@@ -95,7 +137,6 @@ def main():
             print("[ERROR] 投稿内容を取得できませんでした")
             sys.exit(1)
 
-        # 名言画像を生成
         try:
             raw_post = generator.history[-1] if generator.history else ""
             if " - " in raw_post:
@@ -103,12 +144,9 @@ def main():
                 quote_text = quote_part.replace("「", "").replace("」", "")
                 image_path = generate_quote_image(quote_text, author_part)
                 print(f"[OK] 名言画像を生成: {image_path}")
-            else:
-                print("[INFO] 画像生成スキップ（著者情報なし）")
         except Exception as e:
             print(f"[WARN] 画像生成失敗: {e}")
 
-        # フォールバックの場合はトレンドとして記録しない
         if use_trend:
             use_trend = False
 
