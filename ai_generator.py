@@ -196,6 +196,73 @@ def generate_trend_post(trend_data: list) -> dict:
     return result
 
 
+THREAD_PROMPT = """あなたはX（旧Twitter）でバズるスレッド投稿を作るプロのSNSマーケターです。
+成功・お金・マインドセットをテーマに、4〜5ツイートのスレッドを作ってください。
+
+【スレッドの構成】
+- ツイート1（Hook）: 読者の手を止める冒頭。「続きを読みたい」と思わせる
+- ツイート2〜4（Body）: 具体的な内容。リスト・対比・ストーリーなど
+- ツイート5（CTA）: まとめ＋フォローや保存を促す一言
+
+【ルール】
+- 各ツイートは140文字以内（厳守）
+- 絵文字なし
+- ハッシュタグは最後のツイートのみに3個
+- 各ツイートは番号なしで書く（スレッド感を出す）
+- 「続き↓」「1/5」などの表記不要
+
+【出力形式】
+以下のJSON形式で出力してください。他の文章は一切不要です。
+{
+  "tweets": [
+    "1ツイート目の本文",
+    "2ツイート目の本文",
+    "3ツイート目の本文",
+    "4ツイート目の本文",
+    "5ツイート目の本文 #ハッシュタグ1 #ハッシュタグ2 #ハッシュタグ3"
+  ],
+  "image_quote": "画像に載せる短い名言（30文字以内）",
+  "image_author": "名言の著者（なければ空文字）"
+}
+"""
+
+
+def generate_thread() -> dict:
+    """バズるスレッド投稿をAIで生成
+
+    Returns:
+        dict: {tweets: [str, ...], image_quote, image_author}
+    """
+    model = _get_model()
+
+    response = model.generate_content(
+        THREAD_PROMPT,
+        generation_config=genai.GenerationConfig(
+            temperature=1.0,
+            max_output_tokens=800,
+        ),
+    )
+
+    result = _parse_response(response.text)
+
+    if "tweets" not in result or not isinstance(result["tweets"], list):
+        raise ValueError("tweetsリストがありません")
+
+    # 各ツイートの文字数チェック
+    tweets = []
+    for tweet in result["tweets"]:
+        if len(tweet) > 280:
+            tweet = tweet[:277] + "..."
+        tweets.append(tweet)
+    result["tweets"] = tweets
+
+    result.setdefault("image_quote", "")
+    result.setdefault("image_author", "")
+
+    print(f"[OK] スレッドを生成しました（{len(tweets)}ツイート）")
+    return result
+
+
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()

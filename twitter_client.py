@@ -314,6 +314,108 @@ class TwitterClient:
                 self.driver.quit()
                 self.driver = None
 
+    def post_thread(self, tweets: list, image_path: str = None) -> dict:
+        """スレッド投稿（複数ツイートを連続リプライ形式で投稿）
+
+        Args:
+            tweets: ツイートテキストのリスト（最初が親ツイート）
+            image_path: 最初のツイートに添付する画像（任意）
+
+        Returns:
+            dict: {success, posted_count}
+        """
+        if not tweets:
+            return {"success": False, "error": "tweets is empty"}
+
+        try:
+            is_ci = bool(os.getenv("CI"))
+            self._create_driver(headless=is_ci)
+
+            if not self._login_with_cookies():
+                print("[INFO] Cookie無効。自動ログインを試みます...")
+                if self.driver:
+                    self.driver.quit()
+                    self.driver = None
+                if not self.login_auto():
+                    return {"success": False, "error": "auto login failed"}
+                self._create_driver(headless=is_ci)
+                if not self._login_with_cookies():
+                    return {"success": False, "error": "cookie login failed after auto login"}
+
+            posted_count = 0
+
+            for i, tweet_text in enumerate(tweets):
+                human_delay(2, 4)
+
+                if i == 0:
+                    # 最初のツイート: ホームから投稿
+                    tweet_box = WebDriverWait(self.driver, 15).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="tweetTextarea_0"]'))
+                    )
+                else:
+                    # 2ツイート目以降: 前のツイートへのリプライ
+                    # 「返信する」ボタンを探す
+                    time.sleep(3)
+                    try:
+                        reply_btn = WebDriverWait(self.driver, 10).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="reply"]'))
+                        )
+                        self.driver.execute_script("arguments[0].click();", reply_btn)
+                        time.sleep(2)
+                        tweet_box = WebDriverWait(self.driver, 10).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="tweetTextarea_0"]'))
+                        )
+                    except Exception as e:
+                        print(f"[WARN] リプライボックスが見つかりません: {e}")
+                        break
+
+                actions = ActionChains(self.driver)
+                actions.move_to_element(tweet_box).pause(random.uniform(0.3, 0.8)).click().perform()
+                human_delay(0.5, 1.0)
+
+                # 最初のツイートに画像を添付
+                if i == 0 and image_path and os.path.exists(image_path):
+                    try:
+                        file_input = self.driver.find_element(By.CSS_SELECTOR, 'input[data-testid="fileInput"]')
+                        file_input.send_keys(os.path.abspath(image_path))
+                        print(f"[INFO] 画像を添付: {image_path}")
+                        time.sleep(3)
+                    except Exception as e:
+                        print(f"[WARN] 画像添付失敗: {e}")
+
+                # テキスト入力
+                tweet_box = self.driver.find_element(By.CSS_SELECTOR, '[data-testid="tweetTextarea_0"]')
+                self.driver.execute_script("""
+                    var el = arguments[0];
+                    el.focus();
+                    var text = arguments[1];
+                    var dt = new DataTransfer();
+                    dt.setData('text/plain', text);
+                    var event = new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true});
+                    el.dispatchEvent(event);
+                """, tweet_box, tweet_text)
+                human_delay(1.5, 2.5)
+
+                # Ctrl+Enterで投稿
+                tweet_box = self.driver.find_element(By.CSS_SELECTOR, '[data-testid="tweetTextarea_0"]')
+                tweet_box.send_keys(Keys.CONTROL, Keys.ENTER)
+                time.sleep(5)
+                posted_count += 1
+                print(f"[OK] スレッド {i+1}/{len(tweets)} 投稿完了")
+
+            self._save_cookies()
+            print(f"[OK] スレッド投稿完了（{posted_count}件）")
+            return {"success": posted_count > 0, "posted_count": posted_count}
+
+        except Exception as e:
+            print(f"[ERROR] スレッド投稿エラー: {e}")
+            return {"success": False, "error": str(e)}
+
+        finally:
+            if self.driver:
+                self.driver.quit()
+                self.driver = None
+
     def verify_credentials(self) -> bool:
         """Cookieでログインできるか確認"""
         if not os.path.exists(COOKIE_FILE):

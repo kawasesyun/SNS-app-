@@ -23,7 +23,7 @@ from image_generator import generate_quote_image
 from trend_scraper import get_buzz_post_for_reference, scrape_trending_posts, TREND_QUERIES
 
 try:
-    from ai_generator import generate_viral_post, generate_trend_post
+    from ai_generator import generate_viral_post, generate_trend_post, generate_thread
     AI_AVAILABLE = True
 except ImportError:
     AI_AVAILABLE = False
@@ -50,12 +50,23 @@ def _save_rotation(data: dict):
         json.dump(data, f, ensure_ascii=False)
 
 
-def _should_use_trend() -> bool:
-    """今回トレンド投稿を使うかどうか（2回に1回）"""
+def _get_post_type() -> str:
+    """今回の投稿タイプを返す: quote → trend → thread → quote → ...
+    Returns: 'quote', 'trend', 'thread'
+    """
     rotation = _load_rotation()
-    last_type = rotation.get("last_type", "trend")
-    # 前回がtrend → 今回はquote、前回がquote → 今回はtrend
-    return last_type == "quote"
+    last_type = rotation.get("last_type", "thread")
+    if last_type == "thread":
+        return "quote"
+    elif last_type == "quote":
+        return "trend"
+    else:  # trend
+        return "thread"
+
+
+def _should_use_trend() -> bool:
+    """後方互換: トレンド投稿かどうか"""
+    return _get_post_type() == "trend"
 
 
 def _try_ai_post(use_trend: bool):
@@ -96,8 +107,39 @@ def _try_ai_post(use_trend: bool):
 
 
 def main():
-    use_trend = _should_use_trend()
-    print(f"[INFO] 今回の投稿タイプ: {'トレンド参考' if use_trend else '通常'}")
+    post_type = _get_post_type()
+    use_trend = (post_type == "trend")
+    print(f"[INFO] 今回の投稿タイプ: {post_type}")
+
+    # === スレッド投稿モード ===
+    if post_type == "thread" and AI_AVAILABLE:
+        try:
+            print("[INFO] AIスレッドを生成中...")
+            thread_result = generate_thread()
+            tweets = thread_result.get("tweets", [])
+            if tweets:
+                image_path = None
+                if thread_result.get("image_quote"):
+                    try:
+                        image_path = generate_quote_image(
+                            thread_result["image_quote"],
+                            thread_result.get("image_author", ""),
+                        )
+                    except Exception as e:
+                        print(f"[WARN] スレッド画像生成失敗: {e}")
+
+                client = TwitterClient()
+                result = client.post_thread(tweets, image_path=image_path)
+                if result["success"]:
+                    _save_rotation({"last_type": "thread"})
+                    print(f"[OK] スレッド投稿完了（{result.get('posted_count', 0)}件）")
+                    sys.exit(0)
+                else:
+                    print(f"[WARN] スレッド投稿失敗: {result.get('error')}。通常投稿にフォールバック。")
+        except Exception as e:
+            print(f"[WARN] スレッド生成失敗: {e}。通常投稿にフォールバック。")
+        post_type = "quote"
+        use_trend = False
 
     # === AI生成を最優先 ===
     content, image_path = _try_ai_post(use_trend)
@@ -156,7 +198,6 @@ def main():
     result = client.post_tweet(content, image_path=image_path)
 
     if result["success"]:
-        # ローテーション記録を更新
         _save_rotation({"last_type": "trend" if use_trend else "quote"})
         print("[OK] 投稿完了!")
         sys.exit(0)
