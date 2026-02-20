@@ -291,56 +291,64 @@ def generate_quote_image(quote: str, author: str, output_path: str = "quote_imag
     # 2. ノイズテクスチャ（写真背景は軽め）
     img = _add_noise_texture(img, intensity=4 if has_photo_bg else 6)
 
-    # フォント設定
+    # フォント設定（大きめ・インパクト重視）
     if FONT_PATH:
-        font_quote = ImageFont.truetype(FONT_PATH, 40)
-        font_author = ImageFont.truetype(FONT_PATH, 24)
-        font_deco = ImageFont.truetype(FONT_PATH, 120)
+        font_quote = ImageFont.truetype(FONT_PATH, 46)
+        font_author = ImageFont.truetype(FONT_PATH, 26)
+        font_deco = ImageFont.truetype(FONT_PATH, 140)
+        font_brand = ImageFont.truetype(FONT_PATH, 18)
     else:
         font_quote = ImageFont.load_default()
         font_author = ImageFont.load_default()
         font_deco = font_quote
+        font_brand = font_quote
 
     # テキスト折り返し計算
     temp_draw = ImageDraw.Draw(img)
-    card_margin = 80
-    text_margin = 50
+    card_margin = 70
+    text_margin = 55
     max_text_width = WIDTH - (card_margin + text_margin) * 2
     lines = _wrap_text(quote, font_quote, max_text_width, temp_draw)
 
     # テキスト高さ計算
-    line_height = 58
+    line_height = 65
     quote_height = len(lines) * line_height
-    author_height = 50
-    deco_height = 30
+    author_height = 55
+    deco_height = 35
     total_content_height = quote_height + deco_height + author_height
 
-    # 3. ガラスカード（写真背景の場合はやや濃く）
-    card_padding = 45
+    # 3. ガラスカード（写真背景は濃く・グラデーション感）
+    card_padding = 50
     card_x1 = card_margin
     card_y1 = (HEIGHT - total_content_height) // 2 - card_padding
     card_x2 = WIDTH - card_margin
     card_y2 = (HEIGHT + total_content_height) // 2 + card_padding
     card_y1 = max(20, card_y1)
     card_y2 = min(HEIGHT - 20, card_y2)
-    card_opacity = 70 if has_photo_bg else 50
+    card_opacity = 80 if has_photo_bg else 55
     img = _draw_glass_card(img, card_x1, card_y1, card_x2, card_y2, opacity=card_opacity)
+
+    # カード左端にゴールドの縦ライン
+    overlay2 = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d2 = ImageDraw.Draw(overlay2)
+    d2.rectangle([(card_x1, card_y1 + 10), (card_x1 + 4, card_y2 - 10)], fill=(212, 175, 55, 180))
+    img_rgba = img.convert("RGBA")
+    img = Image.alpha_composite(img_rgba, overlay2).convert("RGB")
 
     draw = ImageDraw.Draw(img)
 
-    # 4. 装飾的な引用符
+    # 4. 装飾的な引用符（薄く大きく）
     try:
         quote_overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
         qd = ImageDraw.Draw(quote_overlay)
-        r, g, b = scheme["glow"]
-        qd.text((card_x1 + 15, card_y1 - 25), "\u201C", fill=(r, g, b, 50), font=font_deco)
+        qd.text((card_x1 + 20, card_y1 - 20), "\u201C", fill=(212, 175, 55, 40), font=font_deco)
         img_rgba = img.convert("RGBA")
         img = Image.alpha_composite(img_rgba, quote_overlay).convert("RGB")
         draw = ImageDraw.Draw(img)
     except Exception:
         pass
 
-    # 5. 名言テキスト描画
+    # 5. 名言テキスト描画（強いシャドウ + 白テキスト）
     start_y = (HEIGHT - total_content_height) // 2
     y = start_y
     for line in lines:
@@ -350,37 +358,37 @@ def generate_quote_image(quote: str, author: str, output_path: str = "quote_imag
         bbox = draw.textbbox((0, 0), line, font=font_quote)
         text_width = bbox[2] - bbox[0]
         x = (WIDTH - text_width) // 2
-        # テキストシャドウ（写真背景は影を強く）
-        shadow_color = "#000000" if has_photo_bg else "#00000060"
-        draw.text((x + 2, y + 2), line, fill=shadow_color, font=font_quote)
-        if has_photo_bg:
-            draw.text((x + 1, y + 1), line, fill="#00000080", font=font_quote)
+        # 多重シャドウでインパクトを出す
+        for dx, dy in [(3, 3), (2, 2), (1, 1)]:
+            draw.text((x + dx, y + dy), line, fill=(0, 0, 0, 200), font=font_quote)
         draw.text((x, y), line, fill="#ffffff", font=font_quote)
         y += line_height
 
-    # 6. アクセント区切り線（ゴールド系）
-    sep_y = y + 8
-    sep_width = 60
+    # 6. アクセント区切り線（ゴールド・幅広）
+    sep_y = y + 12
+    sep_width = 80
     sep_x = (WIDTH - sep_width) // 2
-    accent_color = "#d4af37" if has_photo_bg else scheme["accent"]
     draw.rounded_rectangle(
         [(sep_x, sep_y), (sep_x + sep_width, sep_y + 3)],
         radius=2,
-        fill=accent_color,
+        fill="#d4af37",
     )
 
-    # 7. 著者名
-    y = sep_y + 22
-    author_text = f"\u2015 {author}"
-    bbox = draw.textbbox((0, 0), author_text, font=font_author)
-    author_width = bbox[2] - bbox[0]
-    author_color = "#d4af37" if has_photo_bg else scheme["sub"]
-    draw.text(((WIDTH - author_width) // 2, y), author_text, fill=author_color, font=font_author)
+    # 7. 著者名（ゴールド）
+    y = sep_y + 25
+    if author:
+        author_text = f"\u2015 {author}"
+    else:
+        author_text = ""
+    if author_text:
+        bbox = draw.textbbox((0, 0), author_text, font=font_author)
+        author_width = bbox[2] - bbox[0]
+        draw.text(((WIDTH - author_width) // 2 + 1, y + 1), author_text, fill="#000000", font=font_author)
+        draw.text(((WIDTH - author_width) // 2, y), author_text, fill="#d4af37", font=font_author)
 
-    # 8. 上下のアクセントライン（ゴールド系）
-    line_color = "#d4af37" if has_photo_bg else scheme["accent"]
-    draw.rectangle([(0, 0), (WIDTH, 2)], fill=line_color)
-    draw.rectangle([(0, HEIGHT - 2), (WIDTH, HEIGHT)], fill=line_color)
+    # 8. 上下のゴールドアクセントライン（太め）
+    draw.rectangle([(0, 0), (WIDTH, 4)], fill="#d4af37")
+    draw.rectangle([(0, HEIGHT - 4), (WIDTH, HEIGHT)], fill="#d4af37")
 
     # 保存
     img.save(output_path, quality=95)
